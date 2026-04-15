@@ -1,0 +1,99 @@
+---
+- name: Install Anaconda and required Python libraries on macOS
+  vars:
+    anaconda_url: "http://10.0.10.24/files/mac/pkg/Anaconda3-2025.12-2-MacOSX-arm64.pkg"
+    anaconda_pkg_path: "/tmp/Anaconda3-2025.12-2-MacOSX-arm64.pkg"
+    anaconda_app_path: "/opt/anaconda3"
+    python_bin: "/opt/anaconda3/bin/python"
+    pip_bin: "/opt/anaconda3/bin/pip"
+  block:
+    - name: Gather installed Anaconda path status
+      ansible.builtin.stat:
+        path: "{{ anaconda_app_path }}"
+      register: anaconda_stat
+
+    - name: Download Anaconda package
+      ansible.builtin.get_url:
+        url: "{{ anaconda_url }}"
+        dest: "{{ anaconda_pkg_path }}"
+        mode: "0644"
+        force: false
+      when: not anaconda_stat.stat.exists
+
+    - name: Install Anaconda package
+      ansible.builtin.command:
+        cmd: installer -pkg "{{ anaconda_pkg_path }}" -target /
+      register: anaconda_install
+      when: not anaconda_stat.stat.exists
+      changed_when: true
+
+    - name: Report Anaconda already installed
+      ansible.builtin.debug:
+        msg: "Anaconda is already installed at {{ anaconda_app_path }}"
+      when: anaconda_stat.stat.exists
+
+    - name: Check if python exists
+      ansible.builtin.stat:
+        path: "{{ python_bin }}"
+      register: python_stat
+
+    - name: Fail if python is missing
+      ansible.builtin.fail:
+        msg: "Python not found at {{ python_bin }}"
+      when: not python_stat.stat.exists
+
+    - name: Check if OpenCV (cv2) is installed
+      ansible.builtin.command:
+        cmd: "{{ python_bin }} -c 'import cv2'"
+      register: opencv_check
+      failed_when: false
+      changed_when: false
+
+    - name: Install OpenCV using pip if missing
+      ansible.builtin.command:
+        cmd: "{{ pip_bin }} install opencv-python"
+      when: opencv_check.rc != 0
+      register: opencv_install
+      changed_when: opencv_install.rc == 0
+
+    - name: Check if matplotlib is installed
+      ansible.builtin.command:
+        cmd: "{{ python_bin }} -c 'import matplotlib'"
+      register: matplotlib_check
+      failed_when: false
+      changed_when: false
+
+    - name: Install matplotlib using pip if missing
+      ansible.builtin.command:
+        cmd: "{{ pip_bin }} install matplotlib"
+      when: matplotlib_check.rc != 0
+      register: matplotlib_install
+      changed_when: matplotlib_install.rc == 0
+
+    - name: Verify cv2 import works
+      ansible.builtin.command:
+        cmd: >
+          {{ python_bin }} -c "import cv2; print('cv2_ok', cv2.__version__)"
+      register: cv2_verify
+      changed_when: false
+
+    - name: Verify matplotlib import works
+      ansible.builtin.command:
+        cmd: >
+          {{ python_bin }} -c "import matplotlib; print('matplotlib_ok', matplotlib.__version__)"
+      register: matplotlib_verify
+      changed_when: false
+
+    - name: Verify both libraries together
+      ansible.builtin.command:
+        cmd: >
+          {{ python_bin }} -c "import cv2, matplotlib; print('imports_ok')"
+      register: libs_verify
+      changed_when: false
+
+    - name: Show verification output
+      ansible.builtin.debug:
+        msg:
+          - "{{ cv2_verify.stdout }}"
+          - "{{ matplotlib_verify.stdout }}"
+          - "{{ libs_verify.stdout }}"

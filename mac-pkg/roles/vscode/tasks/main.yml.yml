@@ -1,0 +1,93 @@
+---
+- name: Ensure latest VS Code is installed from internal DMG
+  vars:
+    dmg_url: "http://10.0.10.24/files/mac/dmg/VSCode-darwin-universal.dmg"
+    dmg_path: "/tmp/vscode.dmg"
+    app_name: "Visual Studio Code.app"
+    app_path: "/Applications/Visual Studio Code.app"
+  block:
+    - name: Check if VS Code is installed
+      ansible.builtin.stat:
+        path: "{{ app_path }}"
+      register: vscode_stat
+
+    - name: Get installed VS Code version
+      ansible.builtin.command:
+        cmd: defaults read "{{ app_path }}/Contents/Info.plist" CFBundleShortVersionString
+      register: installed_version
+      when: vscode_stat.stat.exists
+      changed_when: false
+      failed_when: false
+
+    - name: Download VS Code DMG from internal server
+      ansible.builtin.get_url:
+        url: "{{ dmg_url }}"
+        dest: "{{ dmg_path }}"
+        mode: "0644"
+
+    - name: Mount DMG
+      ansible.builtin.command:
+        cmd: hdiutil attach "{{ dmg_path }}" -nobrowse
+      register: mount_output
+      changed_when: true
+
+    - name: Extract mount path
+      ansible.builtin.set_fact:
+        mount_path: >-
+          {{
+            mount_output.stdout
+            | regex_findall('(/Volumes/[^\n]+)')
+            | last
+          }}
+
+    - name: Fail if mount path was not found
+      ansible.builtin.fail:
+        msg: "Could not determine DMG mount path from hdiutil output: {{ mount_output.stdout }}"
+      when: mount_path is not defined or mount_path | length == 0
+
+    - name: Get DMG VS Code version
+      ansible.builtin.command:
+        cmd: defaults read "{{ mount_path }}/{{ app_name }}/Contents/Info.plist" CFBundleShortVersionString
+      register: dmg_version
+      changed_when: false
+
+    - name: Decide if installation is needed
+      ansible.builtin.set_fact:
+        install_needed: >-
+          {{
+            (not vscode_stat.stat.exists) or
+            (installed_version.stdout | default('') != dmg_version.stdout)
+          }}
+
+    - name: Show versions
+      ansible.builtin.debug:
+        msg:
+          - "Installed: {{ installed_version.stdout | default('not installed') }}"
+          - "DMG: {{ dmg_version.stdout }}"
+          - "Install needed: {{ install_needed }}"
+
+    - name: Remove old VS Code if upgrading
+      ansible.builtin.file:
+        path: "{{ app_path }}"
+        state: absent
+      when:
+        - install_needed
+        - vscode_stat.stat.exists
+
+    - name: Install VS Code
+      ansible.builtin.command:
+        cmd: cp -R "{{ mount_path }}/{{ app_name }}" /Applications/
+      when: install_needed
+
+  always:
+    - name: Unmount DMG if mounted
+      ansible.builtin.command:
+        cmd: hdiutil detach "{{ mount_path }}"
+      changed_when: true
+      failed_when: false
+      when: mount_path is defined and mount_path | length > 0
+
+    - name: Remove downloaded DMG
+      ansible.builtin.file:
+        path: "{{ dmg_path }}"
+        state: absent
