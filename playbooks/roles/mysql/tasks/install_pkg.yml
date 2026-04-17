@@ -8,6 +8,46 @@
   command: "{{ mysql_pkg_installer_cmd }}"
   become: yes
 
+- name: Detect mysqld defaults
+  shell: "{{ mysql_install_base }}/bin/mysqld --verbose --help 2>/dev/null"
+  register: mysql_help_output
+  changed_when: false
+
+- name: Extract detected datadir
+  set_fact:
+    mysql_detected_datadir: >-
+      {{
+        (mysql_help_output.stdout_lines
+         | select('search', '^datadir\\s')
+         | list
+         | first
+         | regex_replace('^datadir\\s+', ''))
+      }}
+
+- name: Show detected datadir
+  debug:
+    msg: "Detected datadir: {{ mysql_detected_datadir }}"
+
+- name: Ensure detected datadir exists
+  file:
+    path: "{{ mysql_detected_datadir }}"
+    state: directory
+    mode: "0755"
+  become: yes
+
+- name: Check whether mysql system database exists
+  stat:
+    path: "{{ mysql_detected_datadir }}/mysql"
+  register: mysql_system_db_stat
+
+- name: Initialize data directory if missing
+  command: >
+    {{ mysql_install_base }}/bin/mysqld --initialize-insecure
+    --basedir={{ mysql_install_base }}
+    --datadir={{ mysql_detected_datadir }}
+  become: yes
+  when: not mysql_system_db_stat.stat.exists
+
 - name: Start MySQL
   command: "{{ mysql_server_script }} start"
   become: yes
