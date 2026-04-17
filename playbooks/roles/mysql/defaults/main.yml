@@ -1,5 +1,5 @@
 ---
-mysql_pkg_url: "http://your-local-server/mysql-8.0.pkg"
+mysql_pkg_url: "http://10.0.10.24/files/mac/pkg/mysql-9.4.0-macos15-arm64.pkg"
 mysql_pkg_path: "/tmp/mysql.pkg"
 
 mysql_install_base: "/usr/local/mysql"
