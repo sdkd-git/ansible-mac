@@ -1,0 +1,2 @@
+---
+mysql_pkg_installer_cmd: "installer -pkg {{ mysql_pkg_path }} -target /"

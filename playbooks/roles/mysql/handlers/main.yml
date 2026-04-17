@@ -1,0 +1,4 @@
+---
+- name: restart mysql
+  command: "{{ mysql_server_script }} restart"
+  become: yes

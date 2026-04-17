@@ -1,0 +1,8 @@
+---
+- name: Set root password
+  shell: |
+    {{ mysql_client_bin }} -u root <<EOF
+    ALTER USER 'root'@'localhost' IDENTIFIED BY '{{ mysql_root_password }}';
+    FLUSH PRIVILEGES;
+    EOF
+  ignore_errors: yes

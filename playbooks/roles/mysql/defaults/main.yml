@@ -1,0 +1,19 @@
+---
+mysql_pkg_url: "http://your-local-server/mysql-8.0.pkg"
+mysql_pkg_path: "/tmp/mysql.pkg"
+
+mysql_install_base: "/usr/local/mysql"
+mysql_server_script: "{{ mysql_install_base }}/support-files/mysql.server"
+mysql_client_bin: "{{ mysql_install_base }}/bin/mysql"
+
+mysql_root_user: "root"
+mysql_root_password: "root"
+
+mysql_port: 3306
+mysql_bind_address: "127.0.0.1"
+
+mysql_config_file: "/etc/my.cnf"
+
+mysql_verify_query: "SHOW DATABASES;"
+mysql_start_timeout: 60
+mysql_start_delay: 5

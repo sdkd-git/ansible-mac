@@ -1,0 +1,8 @@
+---
+- name: Verify MySQL
+  shell: >
+    {{ mysql_client_bin }} -u root -p{{ mysql_root_password }} -e "SHOW DATABASES;"
+  register: output
+
+- debug:
+    var: output.stdout_lines

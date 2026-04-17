@@ -1,0 +1,7 @@
+---
+galaxy_info:
+  role_name: mysql_macos
+  author: your_name
+  description: Install MySQL on macOS
+  license: MIT
+  min_ansible_version: "2.12"

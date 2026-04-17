@@ -1,0 +1,4 @@
+---
+- import_tasks: install_pkg.yml
+- import_tasks: configure_root.yml
+- import_tasks: verify.yml
